@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>jztool.js 0.1</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <script defer src="main.js"></script>
+  </head>
+  <body>
+    <h1><code>jztool.js 0.1</code></h1>
+
+    <h2>License Notice</h2>
+
+    <pre>Decompression code adapted from UCL
+Copyright (C) 1996-2002 Markus Franz Xaver Johannes Oberhumer
+
+jztool
+Copyright (C) 2021 Aidan MacDonald
+
+jztool.js
+Copyright (C) 2021 astrolabe
+
+The JavaScript code in this page is free software: you can
+redistribute it and/or modify it under the terms of the GNU
+General Public License (GNU GPL) as published by the Free Software
+Foundation, either version 2 of the License, or (at your option)
+any later version.  The code is distributed WITHOUT ANY WARRANTY;
+without even the implied warranty of MERCHANTABILITY or FITNESS
+FOR A PARTICULAR PURPOSE.  See the GNU GPL for more details.</pre>
+
+    <h2>Bootloader Tool</h2>
+
+    <ol>
+      <li>
+        <label for="select-player-model">Select Player Model</label>
+        <div>
+          <select id="select-player-model">
+            <option value="m3k">FiiO M3K</option>
+            <option value="q1">Shanling Q1</option>
+          </select>
+          <button autocomplete="off" id="button-select-player" type="button">Select</button>
+        </div>
+      </li>
+      <li>
+        Boot your player into USB Boot Mode
+        <ol>
+          <li>Fully power off the player</li>
+          <li>Connect one end of the USB cable</li>
+          <li>Start holding down the <em class="boot-button">USB boot mode</em> button on the player</li>
+          <li>Connect the other end of the USB cable</li>
+          <li>The device screen should not turn on. Release the <em class="boot-button">USB boot mode</em> button</li>
+        </ol>
+      </li>
+      <li>
+        Load Bootloader
+        <div>
+          <button autocomplete="off" disabled id="button-load" type="button">Load</button>
+        </div>
+      </li>
+    </ol>
+
+    <div><label for="console">Log</label></div>
+    <textarea autocomplete="off" readonly cols="80" rows="24" style="max-width:100%;resize:none;" id="console"></textarea>
+  </body>
+</html>
