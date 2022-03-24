@@ -367,7 +367,7 @@ const VR_FLUSH_CACHES = 3;
 const VR_PROGRAM_START1 = 4;
 const VR_PROGRAM_START2 = 5;
 
-async function usb_vendor_req(device, request, argument){
+async function usb_vendor_req(device, request, argument) {
     await device.controlTransferOut({
         requestType: 'vendor',
         recipient: 'device',
@@ -377,21 +377,32 @@ async function usb_vendor_req(device, request, argument){
     }, new Uint8Array(0));
 }
 
-async function usb_send(device, address, data){
+async function usb_send(device, address, data) {
     await usb_vendor_req(device, VR_SET_DATA_ADDRESS, address);
     await usb_vendor_req(device, VR_SET_DATA_LENGTH, data.length);
     await device.transferOut(1, data);
 }
 
-async function run_stage1(device, spl){
-    await usb_send(device, 0xf4001000, spl);
-    await usb_vendor_req(device, VR_PROGRAM_START1, 0xf4001800);
+const X1000_TCSM_BASE = 0xf4000000;
+
+const X1000_SPL_LOAD_ADDR = X1000_TCSM_BASE + 0x1000;
+const X1000_SPL_EXEC_ADDR = X1000_TCSM_BASE + 0x1800;
+
+const X1000_STANDARD_DRAM_BASE = 0x80004000;
+
+async function x1000_run_stage1(device, image) {
+    await usb_send(device, X1000_SPL_LOAD_ADDR, image);
+    await usb_vendor_req(device, VR_PROGRAM_START1, X1000_SPL_EXEC_ADDR);
 }
 
-async function run_stage2(device, bootloader){
-    await usb_send(device, 0x80004000, bootloader);
+async function x1000_run_stage2(device, image) {
+    let load_addr = search_bin_header(image, "LOAD");
+    if(load_addr === null)
+        load_addr = X1000_STANDARD_DRAM_BASE;
+
+    await usb_send(device, load_addr, image);
     await usb_vendor_req(device, VR_FLUSH_CACHES, 0);
-    await usb_vendor_req(device, VR_PROGRAM_START2, 0x80004000);
+    await usb_vendor_req(device, VR_PROGRAM_START2, load_addr);
 }
 
 /* ============================================================================
@@ -511,13 +522,13 @@ window.addEventListener('DOMContentLoaded', function(){
             await device.claimInterface(0);
 
             debug_log('Loading stage1 (SPL)...');
-            await run_stage1(device, spl_ab);
+            await x1000_run_stage1(device, spl_ab);
 
             debug_log('Pausing for SPL to come up...');
             await new Promise(x => setTimeout(x, 500));
 
             debug_log('Loading stage2 (bootloader)...');
-            await run_stage2(device, bootloader_ab);
+            await x1000_run_stage2(device, bootloader_ab);
 
             debug_log('Closing device...');
             await device.close();
