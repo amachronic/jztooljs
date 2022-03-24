@@ -54,23 +54,11 @@ function buf_eq(buf, offset, xbuf) {
 
 function ucl_nrv2e_decompress(src){
     let src_index = 0;
-    let get_bit_index = 7;
-    let get_bit_byte = null;
-    function get_bit(){
-        if(get_bit_byte === null){
-            get_bit_byte = src[src_index++];
-        }
-        const r = (get_bit_byte >> get_bit_index) & 1;
+    let bit = 0;
 
-        if(get_bit_index === 0){
-            get_bit_index = 7;
-            get_bit_byte = null;
-        }
-        else{
-            get_bit_index--;
-        }
-
-        return r;
+    function get_bit() {
+        bit = bit & 0x7f ? (bit << 1) : (src[src_index++] << 1) + 1;
+        return (bit >> 8) & 1;
     }
 
     let last_m_off = 1;
