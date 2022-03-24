@@ -25,77 +25,9 @@
 
 const VERSION = '0.1';
 
-let player_model = null;
-let bootloader_ab = null;
-let spl_ab = null;
-
-function tar_extract(tar, filename){
-    function read_str(tar, index, max_length){
-        let s = "";
-        for(var ix = 0; ix < max_length; ix++){
-            let b = tar[index+ix];
-            if(b === 0) break;
-            s += String.fromCharCode(b);
-        }
-        return s;
-    }
-
-    function read_octal(tar, index, max_length){
-        let n = 0;
-        for(var ix = 0; ix < max_length - 1; ix++){
-            let c = tar[index+ix];
-            if(c < 0x30 || c > 0x37){
-                throw new Error('Tar: invalid octal digit');
-            }
-            c -= 0x30;
-            n *= 8;
-            n += c;
-        }
-        return n;
-    }
-
-    const BLOCK_SIZE = 512;
-    const END_OF_ARCHIVE_SIZE = 2 * BLOCK_SIZE;
-
-    let current_header = 0;
-
-    while(true){
-        if(tar.length - current_header < END_OF_ARCHIVE_SIZE){
-            break;
-        }
-
-        let at_end = true;
-        for(let ix = 0; ix < END_OF_ARCHIVE_SIZE; ix++){
-            if(tar[current_header+ix] !== 0){
-                at_end = false;
-                break;
-            }
-        }
-        if(at_end){
-            break;
-        }
-
-        let current_filename = read_str(tar, current_header + 0, 100);
-
-        let current_size = read_octal(tar, current_header + 124, 12);
-
-        if(current_filename === filename){
-            if(current_header + BLOCK_SIZE + current_size >= tar.length){
-                throw new Error('Tar: file extends past end of archive');
-            }
-            return tar.slice(current_header + BLOCK_SIZE, current_header + BLOCK_SIZE + current_size);
-        }
-
-        current_header += BLOCK_SIZE;
-        current_header += current_size;
-
-        if(current_size % BLOCK_SIZE !== 0){
-            current_header += (BLOCK_SIZE - (current_size % BLOCK_SIZE));
-        }
-    }
-
-    throw new Error('Tar: file \'' + filename + '\' not found in archive');
-}
+/* ============================================================================
+ * UCL DECOMPRESSOR & UNPACKER
+ * ========================================================================= */
 
 function ucl_nrv2e_decompress(src){
     let src_index = 0;
@@ -248,11 +180,81 @@ function ucl_unpack(src){
     return Uint8Array.from(dst);
 }
 
-async function retrieve_file(file_name){
-    let resp = await fetch(file_name);
-    if(!resp.ok) throw new Error("Error retrieving file '" + file_name + "'");
-    return new Uint8Array(await resp.arrayBuffer());
+/* ============================================================================
+ * TAR FILE EXTRACTION
+ * ========================================================================= */
+
+function tar_extract(tar, filename){
+    function read_str(tar, index, max_length){
+        let s = "";
+        for(var ix = 0; ix < max_length; ix++){
+            let b = tar[index+ix];
+            if(b === 0) break;
+            s += String.fromCharCode(b);
+        }
+        return s;
+    }
+
+    function read_octal(tar, index, max_length){
+        let n = 0;
+        for(var ix = 0; ix < max_length - 1; ix++){
+            let c = tar[index+ix];
+            if(c < 0x30 || c > 0x37){
+                throw new Error('Tar: invalid octal digit');
+            }
+            c -= 0x30;
+            n *= 8;
+            n += c;
+        }
+        return n;
+    }
+
+    const BLOCK_SIZE = 512;
+    const END_OF_ARCHIVE_SIZE = 2 * BLOCK_SIZE;
+
+    let current_header = 0;
+
+    while(true){
+        if(tar.length - current_header < END_OF_ARCHIVE_SIZE){
+            break;
+        }
+
+        let at_end = true;
+        for(let ix = 0; ix < END_OF_ARCHIVE_SIZE; ix++){
+            if(tar[current_header+ix] !== 0){
+                at_end = false;
+                break;
+            }
+        }
+        if(at_end){
+            break;
+        }
+
+        let current_filename = read_str(tar, current_header + 0, 100);
+
+        let current_size = read_octal(tar, current_header + 124, 12);
+
+        if(current_filename === filename){
+            if(current_header + BLOCK_SIZE + current_size >= tar.length){
+                throw new Error('Tar: file extends past end of archive');
+            }
+            return tar.slice(current_header + BLOCK_SIZE, current_header + BLOCK_SIZE + current_size);
+        }
+
+        current_header += BLOCK_SIZE;
+        current_header += current_size;
+
+        if(current_size % BLOCK_SIZE !== 0){
+            current_header += (BLOCK_SIZE - (current_size % BLOCK_SIZE));
+        }
+    }
+
+    throw new Error('Tar: file \'' + filename + '\' not found in archive');
 }
+
+/* ============================================================================
+ * INGENIC USB BOOT PROTOCOL
+ * ========================================================================= */
 
 const VR_SET_DATA_ADDRESS = 1;
 const VR_SET_DATA_LENGTH = 2;
@@ -285,6 +287,20 @@ async function run_stage2(device, bootloader){
     await usb_send(device, 0x80004000, bootloader);
     await usb_vendor_req(device, VR_FLUSH_CACHES, 0);
     await usb_vendor_req(device, VR_PROGRAM_START2, 0x80004000);
+}
+
+/* ============================================================================
+ * FRONTEND
+ * ========================================================================= */
+
+let player_model = null;
+let bootloader_ab = null;
+let spl_ab = null;
+
+async function retrieve_file(file_name){
+    let resp = await fetch(file_name);
+    if(!resp.ok) throw new Error("Error retrieving file '" + file_name + "'");
+    return new Uint8Array(await resp.arrayBuffer());
 }
 
 window.addEventListener('DOMContentLoaded', function(){
