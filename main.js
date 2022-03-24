@@ -65,6 +65,23 @@ function buf_from_str(str) {
     return new Uint8Array(dat);
 }
 
+// https://stackoverflow.com/a/23451803
+function buf_download(buf, name) {
+    let blob = new Blob(buf, {type: "application/octet-stream"});
+    let url = window.URL.createObjectURL(blob);
+
+    let a = document.createElement("a");
+    a.id = "buffer-download-link";
+    a.style = "display: none";
+    a.href = url;
+    a.download = name;
+
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(a);
+}
+
 /* ============================================================================
  * UCL DECOMPRESSOR & UNPACKER
  * ========================================================================= */
@@ -201,7 +218,7 @@ function ucl_unpack(src){
  * TAR FILE EXTRACTION
  * ========================================================================= */
 
-function tar_extract(tar, filename) {
+function tar_extract(tar, filename, optional) {
     const BLOCK_SIZE = 512;
 
     const NAME_OFF   = 0;   const NAME_LEN   = 100;
@@ -294,6 +311,9 @@ function tar_extract(tar, filename) {
         if((header.size % BLOCK_SIZE) !== 0)
             offset += BLOCK_SIZE - (header.size % BLOCK_SIZE);
     }
+
+    if(optional === true)
+        return null;
 
     throw new Error('Tar: file \'' + filename + '\' not found in archive');
 }
@@ -424,38 +444,136 @@ const PLAYER_INFO = {
     },
 };
 
-let bootloader_ab = null;
-let spl_ab = null;
-
-async function retrieve_file(file_name){
-    let resp = await fetch(file_name);
-    if(!resp.ok) throw new Error("Error retrieving file '" + file_name + "'");
-    return new Uint8Array(await resp.arrayBuffer());
-}
-
 window.addEventListener('DOMContentLoaded', function(){
     const debug_console = document.getElementById('console');
+    let download_cache = {};
+    let package_cache = {};
+
+    function debug_log(item) {
+        debug_console.value += item + '\n';
+    }
+
+    async function retrieve_file(file_name) {
+        debug_log("Downloading file: '" + file_name + "'");
+
+        let resp = await fetch(file_name);
+        if(!resp.ok)
+            throw new Error("Error downloading file: " + resp.status_text + " (" + resp.status + ")");
+
+        let ret = new Uint8Array(await resp.arrayBuffer());
+        debug_log("File downloaded, " + ret.byteLength + " bytes");
+
+        return ret;
+    }
+
+    async function retrieve_file_cached(file_name) {
+        let file = download_cache[file_name];
+        if(file === undefined) {
+            file = await retrieve_file(file_name);
+            download_cache[file_name] = file;
+        }
+
+        return file;
+    }
+
+    function get_player_model() {
+        let elem = document.getElementById('select-player-model');
+        return elem.value;
+    }
 
     function get_player_info() {
-        let elem = document.getElementById('select-player-model');
-        let info = PLAYER_INFO[elem.value];
-        if(info === undefined)
-            throw new Error("Unknown player model: " + elem.value);
-
-        return info;
+        let model = get_player_model();
+        return PLAYER_INFO[model];
     }
 
     function get_cpu_info() {
         let player_info = get_player_info();
-        let cpu_info = CPU_INFO[player_info.cpu];
-        if(cpu_info === undefined)
-            throw new Error("Player has unknown CPU: " + player_info.cpu);
+        if(player_info === undefined)
+            return undefined;
 
-        return cpu_info;
+        return CPU_INFO[player_info.cpu];
     }
 
-    function debug_log(item){
-        debug_console.value += item + '\n';
+    function load_package(pkg) {
+        const player_model = get_player_model();
+        const player_info = get_player_info();
+        if(player_info === undefined)
+            return null;
+
+        debug_log("Extracting bootloader-info.txt...");
+        let meta_file = tar_extract(pkg, 'bootloader-info.txt');
+        let meta_text = new TextDecoder().decode(meta_file);
+
+        let spl_filename = 'spl.' + player_info.file_ext;
+        debug_log("Extracting " + spl_filename + "...")
+        let spl_img = tar_extract(pkg, spl_filename);
+
+        debug_log("Extracting bootloader image...");
+        let boot_ucl = tar_extract(pkg, 'bootloader2.ucl', true);
+        if(boot_ucl !== null) {
+            debug_log("Found bootloader2.ucl (v2 format)");
+        } else {
+            boot_ucl = tar_extract(pkg, 'bootloader.ucl');
+            debug_log("Found bootloader.ucl (v1 format)");
+        }
+
+        let boot_img = ucl_unpack(boot_ucl);
+
+        ret = {
+            version: get_pkg_version(meta_text),
+            spl_img: spl_img,
+            boot_img: boot_img,
+        };
+
+        debug_log("Validated bootloader package.");
+        package_cache[player_model] = ret;
+        return ret;
+    }
+
+    function update_ui_state() {
+        const model = get_player_model();
+        const info = get_player_info();
+        const pkg = package_cache[model];
+
+        // Update the boot button text
+        Array.from(document.getElementsByClassName('boot-button'))
+            .forEach(function(x) {
+                if(info !== undefined)
+                    x.innerText = info.boot_button;
+                else
+                    x.innerText = "USB boot";
+            });
+
+        // Update the version placeholder text
+        Array.from(document.getElementsByClassName('bootloader-version'))
+            .forEach(function(x) {
+                if(pkg !== undefined)
+                    x.innerText = pkg.version;
+                else
+                    x.innerText = "unknown";
+            });
+
+        // Enable/disable actions based on bootloader package presence
+        Array.from(document.getElementsByClassName('enable-if-boot-pkg'))
+            .forEach(x => x.disabled = (pkg === undefined));
+        Array.from(document.getElementsByClassName('disable-if-boot-pkg'))
+            .forEach(x => x.disabled = (pkg !== undefined));
+        Array.from(document.getElementsByClassName('show-if-boot-pkg'))
+            .forEach(x => x.hidden = (pkg === undefined));
+        Array.from(document.getElementsByClassName('hide-if-boot-pkg'))
+            .forEach(x => x.hidden = (pkg !== undefined));
+
+        // Disable elements if player selection is invalid
+        if(info === undefined) {
+            Array.from(document.getElementsByClassName('disable-if-no-player'))
+                .forEach(x => x.disabled = true);
+        }
+
+        // Show/hide elements based on WebUSB support
+        Array.from(document.getElementsByClassName('show-if-webusb'))
+            .forEach(x => x.hidden = (navigator.usb === undefined));
+        Array.from(document.getElementsByClassName('hide-if-webusb'))
+            .forEach(x => x.hidden = (navigator.usb !== undefined));
     }
 
     function add_button(id, callback){
@@ -463,83 +581,96 @@ window.addEventListener('DOMContentLoaded', function(){
 
         el.addEventListener('click', function(){
             el.disabled = true;
-            callback()
-                .catch(function(e){
-                    el.disabled = false;
-                    debug_log(e);
-                });
+            callback().catch(function(e){
+                debug_log(e);
+            });
+
+            el.disabled = false;
         });
     }
 
-    add_button('button-select-player', async function(){
-        const info = get_player_info();
-        debug_log('Selected player: ' + info.name);
+    document.getElementById('select-player-model')
+        .addEventListener('change', function() {
+            update_ui_state();
+        });
 
-        let tar = await retrieve_file('bootloader.' + info.file_ext);
-
-        // Extract SPL and bootloader
-        spl_ab = tar_extract(tar, 'spl.' + info.file_ext);
-        bootloader_ab = ucl_unpack(tar_extract(tar, 'bootloader.ucl'));
-
-        // Extract metadata
-        const bootloader_meta_ab = tar_extract(tar, 'bootloader-info.txt');
-        const bootloader_meta_text = new TextDecoder().decode(bootloader_meta_ab);
-        const bootloader_version = get_pkg_version(bootloader_meta_text);
-
-        debug_log('Bootloader file retrieved!');
-        debug_log('Bootloader version: ' + bootloader_version);
-
-        document.getElementById('select-player-model').disabled = true;
-        document.getElementById('button-load').disabled = false;
-        Array.from(document.getElementsByClassName('boot-button'))
-            .forEach(x => x.innerText = info.boot_button);
+    add_button('clear-log', async function() {
+        debug_console.value = "";
     });
 
-    add_button('button-load', async function(){
-        if(navigator.usb === undefined){
-            throw new Error('This browser does not support WebUSB');
+    add_button('button-download', async function() {
+        const info = get_player_info();
+        if(info !== undefined) {
+            let pkg = await retrieve_file_cached('bootloader.' + info.file_ext);
+            load_package(pkg);
+            update_ui_state();
         }
+    });
 
-        if(bootloader_ab === null || spl_ab === null){
-            throw new Error('Bootloader files not retrieved!');
-        }
+    add_button('button-save', async function() {
+        const info = get_player_info();
+        if(info === undefined)
+            throw new Error('No player info');
+
+        const file_name = 'bootloader.' + info.file_ext
+        const file = download_cache[file_name];
+        const pkg = package_cache[get_player_model()]
+        if(file === undefined || pkg === undefined)
+            throw new Error('Package is missing or invalid');
+
+        debug_log("Performing bootloader download...");
+        buf_download(file, file_name);
+    });
+
+    add_button('button-load', async function() {
+        if(navigator.usb === undefined)
+            throw new Error('This browser does not support WebUSB');
+
+        const player_info = get_player_info();
+        if(player_info === undefined)
+            throw new Error('Invalid player selection');
 
         const cpu_info = get_cpu_info();
+        if(cpu_info === undefined)
+            throw new Error('Invalid CPU for player: ' + player_info.cpu);
+
+        const boot_pkg = package_cache[get_player_model()]
+        if(boot_pkg === undefined)
+            throw new Error('Missing bootloader package');
 
         debug_log('Asking for device...');
         let device = await navigator.usb.requestDevice({
             filters: [{
                 vendorId: cpu_info.vendor_id,
-                productId: cpu_info.product_id
+                productId: cpu_info.product_id,
             }]
         });
 
         debug_log('Opening device...');
         await device.open();
 
-        try{
+        try {
             debug_log('Claiming device interface...');
             await device.claimInterface(0);
 
             debug_log('Loading stage1 (SPL)...');
-            await x1000_run_stage1(device, spl_ab);
+            await x1000_run_stage1(device, boot_pkg.spl_img);
 
             debug_log('Pausing for SPL to come up...');
             await new Promise(x => setTimeout(x, 500));
 
             debug_log('Loading stage2 (bootloader)...');
-            await x1000_run_stage2(device, bootloader_ab);
+            await x1000_run_stage2(device, boot_pkg.boot_img);
 
             debug_log('Closing device...');
             await device.close();
 
             debug_log('Done!');
-        }
-        catch(e){
+        } catch(e) {
             await device.close();
             throw e;
         }
     });
 
-    debug_log('jztool.js ' + VERSION);
+    update_ui_state();
 });

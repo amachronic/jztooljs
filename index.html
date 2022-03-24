@@ -8,41 +8,88 @@
   </head>
   <body>
     <h1><code>jztool.js 0.1</code></h1>
-
-    <ol>
-      <li>
-        <label for="select-player-model">Select Player Model</label>
-        <div>
-          <select id="select-player-model">
-            <option value="m3k">FiiO M3K</option>
-            <option value="q1">Shanling Q1</option>
-          </select>
-          <button autocomplete="off" id="button-select-player" type="button">Select</button>
-        </div>
-      </li>
-      <li>
-        Boot your player into USB Boot Mode
-        <ol>
-          <li>Fully power off the player</li>
-          <li>Connect one end of the USB cable</li>
-          <li>Start holding down the <em class="boot-button">USB boot mode</em> button on the player</li>
-          <li>Connect the other end of the USB cable</li>
-          <li>The device screen should not turn on. Release the <em class="boot-button">USB boot mode</em> button</li>
-        </ol>
-      </li>
-      <li>
-        Load Bootloader
-        <div>
-          <button autocomplete="off" disabled id="button-load" type="button">Load</button>
-        </div>
-      </li>
-    </ol>
-
-    <div><label for="console">Log</label></div>
-    <textarea autocomplete="off" readonly cols="80" rows="24" style="max-width:100%;resize:none;" id="console"></textarea>
-
+    <p><code>jztool.js</code> is a web-based installer for Rockbox which supports
+players based on the Ingenic X1000 SoC.</p>
+    <p>More information is available on the
+<a href="">Rockbox wiki</a>.</p>
+    <noscript>
+      <p>This installer requires JavaScript. It appears you have JavaScript
+disabled or you are using a browser which does not support JavaScript. Please
+enable JavaScript and refresh the page.</p>
+    </noscript>
+    <div class="hide-if-webusb" hidden>
+      <p>This installer requires a browser that supports WebUSB. It appears
+your browser does not support WebUSB. Please try visiting this page again with
+a supported browser.</p>
+      <p>Most Blink-based browsers including Chromium, Chrome, and Edge support
+WebUSB, while Firefox and other Gecko-based browsers don't.</p>
+    </div>
+    <div class="show-if-webusb" hidden>
+      <ol>
+        <li>
+          <label for="select-player-model">Select your player model.</label>
+          <div>
+            <select id="select-player-model">
+              <option value="none">Choose your player</option>
+              <option value="m3k">FiiO M3K</option>
+              <option value="q1">Shanling Q1</option>
+            </select>
+          </div>
+        </li>
+        <li>
+          <div>Download the latest version of the bootloader.</div>
+          <div>Bootloader version: <code class="bootloader-version">unknown</code></div>
+          <button autocomplete="off" id="button-download" class="disable-if-no-player disable-if-boot-pkg" type="button">Download bootloader</button>
+        </li>
+        <li>
+          <div>Save the bootloader to a microSD card and insert the card into your player.</div>
+          <div><em>Note:</em> The SD card must be formatted as FAT32. Other filesystems such as exFAT are unsupported.</div>
+          <button autocomplete="off" id="button-save" class="disable-if-no-player enable-if-boot-pkg" type="button">Save bootloader</button>
+        </li>
+        <li>
+          Connect your player to your computer in USB boot mode:
+          <ul>
+            <li>Make sure your player is fully powered off.</li>
+            <li>Connect a USB cable to your player -- but don't plug it into your computer yet.</li>
+            <li>Hold the <em class="boot-button">USB boot</em> button while plugging the other end of the cable into your computer.</li>
+            <li>Release the <em class="boot-button">USB boot</em> button.</li>
+          </ul>
+        </li>
+        <li>
+          <div>Load the bootloader to your player. After clicking the button below,
+            select the player from the popup box displayed by your browser. If your
+            player doesn't appear, go back to the previous step and reconnect your
+            player to the computer.</div>
+          <button autocomplete="off" id="button-load" class="disable-if-no-player enable-if-boot-pkg" type="button">Load bootloader</button>
+        </li>
+        <li>
+          The Rockbox recovery menu should now be displayed on your player's screen.
+          If not, check the log below for error messages.
+        </li>
+        <li>
+          Before flashing the bootloader, you should select <em>Backup</em> from
+          the <code>[Bootloader]</code> menu to save a backup of your original
+          bootloader to the SD card. You can use the backup to restore the original
+          bootloader using the <em>Restore</em> option.
+        </li>
+        <li>
+          To flash the bootloader to your player, select <em>Install or update</em>
+          from the <code>[Bootloader]</code> menu.
+        </li>
+        <li>
+          After flashing the bootloader successfully, you can complete the installation
+          by downloading a
+          <a href="">Rockbox development build</a>
+          and extracting the zip file to the root of your player's SD card. You can use
+          the <em>USB Mode</em> option in the recovery menu to access the SD card using
+          your player.
+        </li>
+      </ol>
+      <div><label for="console">Log</label></div>
+      <textarea autocomplete="off" readonly cols="60" rows="12" style="max-width:100%;resize:none;" id="console"></textarea>
+      <div><button autocomplete="off" id="clear-log" type="button">Clear log</button></div>
+    </div>
     <h2>License Notice</h2>
-
     <pre>Decompression code adapted from UCL
 Copyright (C) 1996-2002 Markus Franz Xaver Johannes Oberhumer
 
