@@ -133,60 +133,49 @@ function ucl_nrv2e_decompress(src){
 }
 
 function ucl_unpack(src){
-    if(src.length < 18){
+    if(src.length < 18)
         throw new Error('UCL: input is too short for header');
-    }
 
     const magic = [0x00, 0xe9, 0x55, 0x43, 0x4c, 0xff, 0x01, 0x1a];
-    if(!buf_eq(src, 0, magic))
-        throw new Error('UCL: invalid magic');
-
     const method = src[12];
     const block_size = read_be32(src, 14);
 
-    if(method != 0x2e){
+    if(!buf_eq(src, 0, magic))
+        throw new Error('UCL: invalid magic');
+    if(method !== 0x2e)
         throw new Error('UCL: unsupported method');
-    }
-
-    if(block_size < 1024 || block_size > 8*1024*1024){
+    if(block_size < 1024 || block_size > 8*1024*1024)
         throw new Error('UCL: invalid block size');
-    }
 
-    let src_index = 18;
-
+    let pos = 18;
     let dst = [];
-
-    while(true){
-        let out_len = read_be32(src, src_index);
-        src_index += 4;
-        if(out_len === 0){
+    while(true) {
+        const out_len = read_be32(src, pos);
+        pos += 4;
+        if(out_len === 0)
             break;
-        }
-
-        let in_len = read_be32(src, src_index);
-        src_index += 4;
-        if(in_len > block_size || out_len > block_size || in_len === 0 || in_len > out_len){
-            throw new Error('UCL: invalid lengths');
-        }
-
-        if(src.length - src_index < in_len){
+        if(src.length - pos < 4)
             throw new Error('UCL: unexpected EOF');
-        }
 
-        if(in_len < out_len){
-            const decompressed = ucl_nrv2e_decompress(src.slice(src_index, src_index + in_len));
-            if(decompressed.length !== out_len){
+        const in_len = read_be32(src, pos);
+        pos += 4;
+        if(in_len > block_size || out_len > block_size || in_len === 0 || in_len > out_len)
+            throw new Error('UCL: invalid lengths');
+        if(src.length - pos < in_len)
+            throw new Error('UCL: unexpected EOF');
+
+        if(in_len < out_len) {
+            const out = ucl_nrv2e_decompress(src.slice(pos, pos + in_len));
+            if(out.length !== out_len)
                 throw new Error('UCL: decompressed the incorrect amount');
-            }
-            dst = dst.concat(decompressed);
-        }
-        else{
-            for(let ix = 0; ix < in_len; ix++){
-                dst.push(src[src_index + ix]);
-            }
+
+            dst = dst.concat(out);
+        } else {
+            for(let ix = 0; ix < in_len; ix++)
+                dst.push(src[pos + ix]);
         }
 
-        src_index += in_len;
+        pos += in_len;
     }
 
     return Uint8Array.from(dst);
