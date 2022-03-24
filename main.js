@@ -30,6 +30,14 @@ const VERSION = '0.1';
  * UTILITIES
  * ========================================================================= */
 
+function read_le32(buf, offset) {
+    let ub = buf.buffer;
+    if(ub.byteLength - offset < 4)
+        throw new Error("buffer read out of bounds");
+
+    return new DataView(ub).getUint32(offset, true);
+}
+
 function read_be32(buf, offset) {
     let ub = buf.buffer;
     if(ub.byteLength - offset < 4)
@@ -47,6 +55,14 @@ function buf_eq(buf, offset, xbuf) {
             return false;
 
     return true;
+}
+
+function buf_from_str(str) {
+    let dat = [];
+    for(let ix = 0; ix < str.length; ++ix)
+        dat.push(str.charCodeAt(ix));
+
+    return new Uint8Array(dat);
 }
 
 /* ============================================================================
@@ -292,6 +308,44 @@ function get_pkg_version(meta_txt) {
         throw new Error("Package: Version metadata is malformed");
 
     return meta_txt.slice(0, index);
+}
+
+function search_bin_header(buf, label) {
+    if(label.length !== 4)
+        throw new Error("Binary header label must be 4 bytes long");
+
+    const HDR_BEGIN = 128; // Header begins within this many bytes
+    const HDR_LEN   = 256; // Maxmimum length of header, in bytes
+
+    const magic_BEGINHDR = buf_from_str("BEGINHDR");
+    const magic_ENDH     = buf_from_str("ENDH");
+    const magic_label    = buf_from_str(label);
+
+    // Calculate search bound
+    let search_len = Math.min(buf.length, HDR_LEN);
+    if(search_len < 8)
+        return null;
+    search_len -= 7;
+
+    // Locate the beginning of the header
+    let ix = 8;
+    for(; ix < search_len; ix += 4)
+        if(buf_eq(buf, ix, magic_BEGINHDR))
+            break;
+    if(ix >= search_len)
+        return null;
+
+    // Search for the label within the header
+    search_len = Math.min(buf.length, ix + HDR_LEN) - 7;
+    for(; ix < search_len; ix += 8) {
+        if(buf_eq(buf, ix, magic_ENDH))
+            break;
+
+        if(buf_eq(buf, ix, magic_label))
+            return read_le32(buf, ix + 4);
+    }
+
+    return null;
 }
 
 /* ============================================================================
