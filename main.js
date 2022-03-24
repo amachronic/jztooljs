@@ -201,17 +201,19 @@ function tar_extract(tar, filename){
         return s;
     }
 
-    function read_octal(tar, index, max_length){
+    function read_octal(buf, offset, max_length) {
         let n = 0;
-        for(var ix = 0; ix < max_length - 1; ix++){
-            let c = tar[index+ix];
-            if(c < 0x30 || c > 0x37){
+        for(let ix = 0; ix < max_length; ix++) {
+            const c = buf[offset + ix];
+            if(c === 0)
+                break;
+            if(c < 0x30 || c > 0x37)
                 throw new Error('Tar: invalid octal digit');
-            }
-            c -= 0x30;
+
             n *= 8;
-            n += c;
+            n += c - 0x30;
         }
+
         return n;
     }
 
