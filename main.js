@@ -185,13 +185,19 @@ function ucl_unpack(src){
  * ========================================================================= */
 
 function tar_extract(tar, filename){
-    function read_str(tar, index, max_length){
+    function read_str(buf, offset, max_length) {
+        if(buf.length - offset < max_length)
+            throw new Error("Tar: unexpected EOF");
+
         let s = "";
-        for(var ix = 0; ix < max_length; ix++){
-            let b = tar[index+ix];
-            if(b === 0) break;
-            s += String.fromCharCode(b);
+        for(let ix = 0; ix < max_length; ++ix) {
+            const ch = buf[offset + ix];
+            if(ch === 0)
+                break;
+
+            s += String.fromCharCode(ch);
         }
+
         return s;
     }
 
