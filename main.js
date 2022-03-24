@@ -10,6 +10,7 @@
  *
  * jztool.js
  * Copyright (C) 2021 astrolabe
+ * Copyright (C) 2022 Aidan MacDonald
  *
  * The JavaScript code in this file is free software: you can
  * redistribute it and/or modify it under the terms of the GNU
