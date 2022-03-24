@@ -286,6 +286,15 @@ function tar_extract(tar, filename) {
  * INGENIC USB BOOT PROTOCOL
  * ========================================================================= */
 
+const CPU_X1000 = "x1000";
+
+const CPU_INFO = {
+    "x1000": {
+        vendor_id: 0xa108,
+        product_id: 0x1000,
+    },
+};
+
 const VR_SET_DATA_ADDRESS = 1;
 const VR_SET_DATA_LENGTH = 2;
 const VR_FLUSH_CACHES = 3;
@@ -323,7 +332,21 @@ async function run_stage2(device, bootloader){
  * FRONTEND
  * ========================================================================= */
 
-let player_model = null;
+const PLAYER_INFO = {
+    "m3k": {
+        name: "FiiO M3K",
+        file_ext: "m3k",
+        boot_button: "Volume Down",
+        cpu: CPU_X1000,
+    },
+    "q1": {
+        name: "Shanling Q1",
+        file_ext: "q1",
+        boot_button: "Play",
+        cpu: CPU_X1000,
+    },
+};
+
 let bootloader_ab = null;
 let spl_ab = null;
 
@@ -335,6 +358,24 @@ async function retrieve_file(file_name){
 
 window.addEventListener('DOMContentLoaded', function(){
     const debug_console = document.getElementById('console');
+
+    function get_player_info() {
+        let elem = document.getElementById('select-player-model');
+        let info = PLAYER_INFO[elem.value];
+        if(info === undefined)
+            throw new Error("Unknown player model: " + elem.value);
+
+        return info;
+    }
+
+    function get_cpu_info() {
+        let player_info = get_player_info();
+        let cpu_info = CPU_INFO[player_info.cpu];
+        if(cpu_info === undefined)
+            throw new Error("Player has unknown CPU: " + player_info.cpu);
+
+        return cpu_info;
+    }
 
     function debug_log(item){
         debug_console.value += item + '\n';
@@ -354,29 +395,11 @@ window.addEventListener('DOMContentLoaded', function(){
     }
 
     add_button('button-select-player', async function(){
-        let select_player_model = document.getElementById('select-player-model');
-        player_model = select_player_model.value;
+        const info = get_player_info();
+        debug_log('Selected player: ' + info.name);
 
-        debug_log('Selected player: ' + player_model);
-
-        let file_ext = null;
-        let boot_button = null;
-
-        switch(player_model){
-        case 'm3k':
-            file_ext = 'm3k';
-            boot_button = 'Volume Down';
-            break;
-        case 'q1':
-            file_ext = 'q1';
-            boot_button = 'Play';
-            break;
-        default:
-            throw new Error('Invalid player model');
-        }
-
-        let tar = await retrieve_file('bootloader.' + file_ext);
-        spl_ab = tar_extract(tar, 'spl.' + file_ext);
+        let tar = await retrieve_file('bootloader.' + info.file_ext);
+        spl_ab = tar_extract(tar, 'spl.' + info.file_ext);
 
         bootloader_ab = ucl_unpack(tar_extract(tar, 'bootloader.ucl'));
         let bootloader_version_ab = tar_extract(tar, 'bootloader-info.txt');
@@ -385,9 +408,10 @@ window.addEventListener('DOMContentLoaded', function(){
         debug_log('Bootloader files retrieved!');
         debug_log('Bootloader version: ' + bootloader_version);
 
-        select_player_model.disabled = true;
+        document.getElementById('select-player-model').disabled = true;
         document.getElementById('button-load').disabled = false;
-        Array.from(document.getElementsByClassName('boot-button')).forEach(x => x.innerText = boot_button);
+        Array.from(document.getElementsByClassName('boot-button'))
+            .forEach(x => x.innerText = info.boot_button);
     });
 
     add_button('button-load', async function(){
@@ -399,23 +423,15 @@ window.addEventListener('DOMContentLoaded', function(){
             throw new Error('Bootloader files not retrieved!');
         }
 
-        let vendor_id = null;
-        let product_id = null;
-
-        switch(player_model){
-        case 'm3k':
-        case 'q1':
-            vendor_id = 0xa108;
-            product_id = 0x1000;
-            break;
-        default:
-            throw new Error('Invalid player model');
-        }
+        const cpu_info = get_cpu_info();
 
         debug_log('Asking for device...');
-        let device = await navigator.usb.requestDevice({filters: [
-            {vendorId: vendor_id, productId: product_id}
-        ]});
+        let device = await navigator.usb.requestDevice({
+            filters: [{
+                vendorId: cpu_info.vendor_id,
+                productId: cpu_info.product_id
+            }]
+        });
 
         debug_log('Opening device...');
         await device.open();
