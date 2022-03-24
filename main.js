@@ -37,6 +37,17 @@ function read_be32(buf, offset) {
     return new DataView(ub).getUint32(offset, false);
 }
 
+function buf_eq(buf, offset, xbuf) {
+    if(offset + xbuf.length > buf.length)
+        return false;
+
+    for(let ix = 0; ix < xbuf.length; ++ix)
+        if(buf[offset + ix] !== xbuf[ix])
+            return false;
+
+    return true;
+}
+
 /* ============================================================================
  * UCL DECOMPRESSOR & UNPACKER
  * ========================================================================= */
@@ -127,12 +138,8 @@ function ucl_unpack(src){
     }
 
     const magic = [0x00, 0xe9, 0x55, 0x43, 0x4c, 0xff, 0x01, 0x1a];
-
-    for(let ix = 0; ix < magic.length; ix++){
-        if(src[ix] !== magic[ix]){
-            throw new Error('UCL: invalid magic');
-        }
-    }
+    if(!buf_eq(src, 0, magic))
+        throw new Error('UCL: invalid magic');
 
     const method = src[12];
     const block_size = read_be32(src, 14);
