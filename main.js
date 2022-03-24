@@ -26,6 +26,18 @@
 const VERSION = '0.1';
 
 /* ============================================================================
+ * UTILITIES
+ * ========================================================================= */
+
+function read_be32(buf, offset) {
+    let ub = buf.buffer;
+    if(ub.byteLength - offset < 4)
+        throw new Error("buffer read out of bounds");
+
+    return new DataView(ub).getUint32(offset, false);
+}
+
+/* ============================================================================
  * UCL DECOMPRESSOR & UNPACKER
  * ========================================================================= */
 
@@ -110,13 +122,6 @@ function ucl_nrv2e_decompress(src){
 }
 
 function ucl_unpack(src){
-    function read_32(ab, index){
-        if(ab.length - index < 4){
-            throw new Error('UCL: unexpected EOF');
-        }
-        return new DataView(ab.buffer).getUint32(index, false);
-    }
-
     if(src.length < 18){
         throw new Error('UCL: input is too short for header');
     }
@@ -130,7 +135,7 @@ function ucl_unpack(src){
     }
 
     const method = src[12];
-    const block_size = read_32(src, 14);
+    const block_size = read_be32(src, 14);
 
     if(method != 0x2e){
         throw new Error('UCL: unsupported method');
@@ -145,13 +150,13 @@ function ucl_unpack(src){
     let dst = [];
 
     while(true){
-        let out_len = read_32(src, src_index);
+        let out_len = read_be32(src, src_index);
         src_index += 4;
         if(out_len === 0){
             break;
         }
 
-        let in_len = read_32(src, src_index);
+        let in_len = read_be32(src, src_index);
         src_index += 4;
         if(in_len > block_size || out_len > block_size || in_len === 0 || in_len > out_len){
             throw new Error('UCL: invalid lengths');
