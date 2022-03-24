@@ -52,69 +52,80 @@ function buf_eq(buf, offset, xbuf) {
  * UCL DECOMPRESSOR & UNPACKER
  * ========================================================================= */
 
-function ucl_nrv2e_decompress(src){
-    let src_index = 0;
+function ucl_nrv2e_decompress(src) {
     let bit = 0;
-
-    function get_bit() {
-        bit = bit & 0x7f ? (bit << 1) : (src[src_index++] << 1) + 1;
-        return (bit >> 8) & 1;
-    }
-
+    let ilen = 0;
     let last_m_off = 1;
     let dst = [];
 
-    while(true){
-        while(get_bit()){
-            dst.push(src[src_index++]);
+    const E_INPUT_OVERRUN = "UCL: input overrun";
+    const E_LOOKBEHIND_OVERRUN = "UCL: lookbehind overrun";
+
+    function fail(cond, err) {
+        if(cond)
+            throw new Error(err);
+    }
+
+    function get_bit() {
+        bit = bit & 0x7f ? (bit << 1) : (src[ilen++] << 1) + 1;
+        return (bit >> 8) & 1;
+    }
+
+    while(true) {
+        let m_off, m_len;
+
+        while(get_bit()) {
+            fail(ilen >= src.length, E_INPUT_OVERRUN);
+            dst.push(src[ilen++]);
         }
 
-        let m_len = null;
-        let m_off = 1;
-        while(true){
-            m_off = m_off * 2 + get_bit();
-            if(get_bit()) break;
-            m_off = (m_off-1)*2 + get_bit();
+        m_off = 1;
+        while(true) {
+            m_off = m_off*2 + get_bit();
+            fail(ilen >= src.length, E_INPUT_OVERRUN);
+            fail(m_off > 0xffffff + 3, E_LOOKBEHIND_OVERRUN);
+            if(get_bit())
+                break;
+            m_off = (m_off - 1)*2 + get_bit();
         }
 
-        if(m_off === 2){
+        if(m_off === 2) {
             m_off = last_m_off;
             m_len = get_bit();
-        }
-        else{
-            m_off = (m_off-3)*256 + src[src_index++];
-            if(m_off === 0xffffffff){
+        } else {
+            fail(ilen >= src.length, E_INPUT_OVERRUN);
+            m_off = (m_off - 3)*256 + src[ilen++];
+            if(m_off === 0xffffffff)
                 break;
-            }
+
             m_len = (m_off ^ 0xffffffff) & 1;
             m_off >>= 1;
             last_m_off = ++m_off;
         }
 
-        if(m_len){
+        if(m_len > 0)
             m_len = 1 + get_bit();
-        }
-        else if(get_bit()){
+        else if(get_bit())
             m_len = 3 + get_bit();
-        }
-        else{
+        else {
             m_len++;
-            do{
+            do {
                 m_len = m_len*2 + get_bit();
-            }while(!get_bit());
+                fail(ilen >= src.length, E_INPUT_OVERRUN);
+            } while(!get_bit());
             m_len += 3;
         }
 
-        if(m_off > 0x500){
-            m_len += 1;
-        }
+        if(m_off > 0x500)
+            m_len++;
 
-        let pos_index = dst.length - m_off;
-        dst.push(dst[pos_index++]);
+        fail(m_off > dst.length, E_LOOKBEHIND_OVERRUN);
 
-        for(let ix = 0; ix < m_len; ix++){
-            dst.push(dst[pos_index++]);
-        }
+        let lb_off = dst.length - m_off;
+        dst.push(dst[lb_off++]);
+
+        for(let ix = 0; ix < m_len; ++ix)
+            dst.push(dst[lb_off++]);
     }
 
     return dst;
