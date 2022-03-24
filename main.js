@@ -283,6 +283,18 @@ function tar_extract(tar, filename) {
 }
 
 /* ============================================================================
+ * PACKAGE AND IMAGE UTILITIES
+ * ========================================================================= */
+
+function get_pkg_version(meta_txt) {
+    const index = meta_txt.indexOf('\n');
+    if(index < 0)
+        throw new Error("Package: Version metadata is malformed");
+
+    return meta_txt.slice(0, index);
+}
+
+/* ============================================================================
  * INGENIC USB BOOT PROTOCOL
  * ========================================================================= */
 
@@ -399,13 +411,17 @@ window.addEventListener('DOMContentLoaded', function(){
         debug_log('Selected player: ' + info.name);
 
         let tar = await retrieve_file('bootloader.' + info.file_ext);
+
+        // Extract SPL and bootloader
         spl_ab = tar_extract(tar, 'spl.' + info.file_ext);
-
         bootloader_ab = ucl_unpack(tar_extract(tar, 'bootloader.ucl'));
-        let bootloader_version_ab = tar_extract(tar, 'bootloader-info.txt');
-        let bootloader_version = new TextDecoder().decode(bootloader_version_ab).replace(/\n|\r/, '');
 
-        debug_log('Bootloader files retrieved!');
+        // Extract metadata
+        const bootloader_meta_ab = tar_extract(tar, 'bootloader-info.txt');
+        const bootloader_meta_text = new TextDecoder().decode(bootloader_meta_ab);
+        const bootloader_version = get_pkg_version(bootloader_meta_text);
+
+        debug_log('Bootloader file retrieved!');
         debug_log('Bootloader version: ' + bootloader_version);
 
         document.getElementById('select-player-model').disabled = true;
