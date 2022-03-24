@@ -184,7 +184,16 @@ function ucl_unpack(src){
  * TAR FILE EXTRACTION
  * ========================================================================= */
 
-function tar_extract(tar, filename){
+function tar_extract(tar, filename) {
+    const BLOCK_SIZE = 512;
+
+    const NAME_OFF   = 0;   const NAME_LEN   = 100;
+    const SIZE_OFF   = 124; const SIZE_LEN   = 12;
+    const CHKSUM_OFF = 148; const CHKSUM_LEN = 8;
+    const TYPE_OFF   = 156;
+
+    const T_REG = 0x30; // regular file
+
     function read_str(buf, offset, max_length) {
         if(buf.length - offset < max_length)
             throw new Error("Tar: unexpected EOF");
@@ -217,44 +226,56 @@ function tar_extract(tar, filename){
         return n;
     }
 
-    const BLOCK_SIZE = 512;
-    const END_OF_ARCHIVE_SIZE = 2 * BLOCK_SIZE;
+    function calc_checksum(buf, offset) {
+        if(buf.length - offset < BLOCK_SIZE)
+            throw new Error('Tar: unexpected EOF');
 
-    let current_header = 0;
+        const u32_max = 0xffffffff;
+        let res = 256;
 
-    while(true){
-        if(tar.length - current_header < END_OF_ARCHIVE_SIZE){
+        for(let ix = 0; ix < CHKSUM_OFF; ++ix)
+            res = (res + buf[offset + ix]) & u32_max;
+        for(let ix = CHKSUM_OFF+CHKSUM_LEN; ix < BLOCK_SIZE; ++ix)
+            res = (res + buf[offset + ix]) & u32_max;
+        return res;
+    }
+
+    function read_header(buf, offset) {
+        if(buf.length - offset < BLOCK_SIZE)
+            throw new Error('Tar: unexpected EOF');
+
+        // Assume end of archive if there is no checksum
+        if(buf[offset + CHKSUM_OFF] === 0)
+            return null;
+
+        const checksum = read_octal(buf, offset + CHKSUM_OFF, CHKSUM_LEN);
+        if(checksum !== calc_checksum(buf, offset))
+            throw new Error('Tar: checksum mismatch at offset ' + offset);
+
+        return {
+            name: read_str(buf, offset + NAME_OFF, NAME_LEN),
+            size: read_octal(buf, offset + SIZE_OFF, SIZE_LEN),
+            type: buf[offset+TYPE_OFF] ? buf[offset+TYPE_OFF] : T_REG,
+        };
+    }
+
+    let offset = 0;
+    while(true) {
+        const header = read_header(tar, offset);
+        offset += BLOCK_SIZE;
+        if(header === null)
             break;
+
+        if(header.name === filename) {
+            if(header.type !== T_REG)
+                throw new Error('Tar: ' + filename + ' is not a regular file');
+
+            return tar.slice(offset, offset + header.size);
         }
 
-        let at_end = true;
-        for(let ix = 0; ix < END_OF_ARCHIVE_SIZE; ix++){
-            if(tar[current_header+ix] !== 0){
-                at_end = false;
-                break;
-            }
-        }
-        if(at_end){
-            break;
-        }
-
-        let current_filename = read_str(tar, current_header + 0, 100);
-
-        let current_size = read_octal(tar, current_header + 124, 12);
-
-        if(current_filename === filename){
-            if(current_header + BLOCK_SIZE + current_size >= tar.length){
-                throw new Error('Tar: file extends past end of archive');
-            }
-            return tar.slice(current_header + BLOCK_SIZE, current_header + BLOCK_SIZE + current_size);
-        }
-
-        current_header += BLOCK_SIZE;
-        current_header += current_size;
-
-        if(current_size % BLOCK_SIZE !== 0){
-            current_header += (BLOCK_SIZE - (current_size % BLOCK_SIZE));
-        }
+        offset += header.size;
+        if((header.size % BLOCK_SIZE) !== 0)
+            offset += BLOCK_SIZE - (header.size % BLOCK_SIZE);
     }
 
     throw new Error('Tar: file \'' + filename + '\' not found in archive');
