@@ -7,90 +7,95 @@
     <script defer src="main.js"></script>
   </head>
   <body>
-    <h1><code>jztool.js 1.0</code></h1>
-    <p><code>jztool.js</code> is a web-based installer for Rockbox which supports
-players based on the Ingenic X1000 SoC.</p>
-    <p>More information is available on the
-<a href="">Rockbox wiki</a>.</p>
-    <noscript>
-      <p>This installer requires JavaScript. It appears you have JavaScript
-disabled or you are using a browser which does not support JavaScript. Please
-enable JavaScript and refresh the page.</p>
-    </noscript>
-    <div class="hide-if-webusb" hidden>
-      <p>This installer requires a browser that supports WebUSB. It appears
-your browser does not support WebUSB. Please try visiting this page again with
-a supported browser.</p>
-      <p>Most Blink-based browsers including Chromium, Chrome, and Edge support
-WebUSB, while Firefox and other Gecko-based browsers don't.</p>
-    </div>
-    <div class="show-if-webusb" hidden>
-      <ol>
-        <li>
-          <label for="select-player-model">Select your player model.</label>
-          <div>
-            <select id="select-player-model">
-              <option value="none">Choose your player</option>
-              <option value="m3k">FiiO M3K</option>
-              <option value="q1">Shanling Q1</option>
-            </select>
-          </div>
-        </li>
-        <li>
-          <div>Download the latest version of the bootloader.</div>
-          <div>Bootloader version: <code class="bootloader-version">unknown</code></div>
-          <button autocomplete="off" id="button-download" class="disable-if-no-player disable-if-boot-pkg" type="button">Download bootloader</button>
-        </li>
-        <li>
-          <div>Save the bootloader to a microSD card and insert the card into your player.</div>
-          <div><em>Note:</em> The SD card must be formatted as FAT32. Other filesystems such as exFAT are unsupported.</div>
-          <button autocomplete="off" id="button-save" class="disable-if-no-player enable-if-boot-pkg" type="button">Save bootloader</button>
-        </li>
-        <li>
-          Connect your player to your computer in USB boot mode:
-          <ul>
-            <li>Make sure your player is fully powered off.</li>
-            <li>Connect a USB cable to your player -- but don't plug it into your computer yet.</li>
-            <li>Hold the <em class="boot-button">USB boot</em> button while plugging the other end of the cable into your computer.</li>
-            <li>Release the <em class="boot-button">USB boot</em> button.</li>
-          </ul>
-        </li>
-        <li>
-          <div>Load the bootloader to your player. After clicking the button below,
+    <header>
+      <h1><code>jztool.js</code> 1.0</h1>
+    </header>
+    <main>
+      <p><code>jztool.js</code> is a web-based installer for Rockbox which supports
+        players based on the Ingenic X1000 SoC.</p>
+      <p>For more information about installing Rockbox on your player, see the
+        <a href="">Rockbox wiki</a>.</p>
+      <noscript>
+        <p>This installer requires JavaScript. It appears you have JavaScript
+          disabled or you are using a browser which does not support JavaScript. Please
+          enable JavaScript and refresh the page.</p>
+      </noscript>
+      <div class="hide-if-webusb" hidden>
+        <p>This installer requires a browser that supports WebUSB. It appears
+          your browser does not support WebUSB. Please try visiting this page again with
+          a supported browser.</p>
+        <p>Most Blink-based browsers including Chromium, Chrome, and Edge support
+          WebUSB, while Gecko- or WebKit-based browsers such as Firefox or
+          Safari do not.</p>
+      </div>
+      <div class="show-if-webusb" hidden>
+        <ol class="steps-list">
+          <li>
+            Select your player model.
+            <div>
+              <select id="select-player-model">
+                <option value="none">Choose your player</option>
+                <option value="m3k">FiiO M3K</option>
+                <option value="q1">Shanling Q1</option>
+              </select>
+            </div>
+          </li>
+          <li>
+            Download the latest version of the bootloader.
+            <div><button autocomplete="off" id="button-download" class="disable-if-no-player disable-if-boot-pkg" type="button">Download bootloader</button></div>
+          </li>
+          <li>
+            Save the bootloader to a microSD card and insert the card into your player.
+            <div><button autocomplete="off" id="button-save" class="disable-if-no-player enable-if-boot-pkg" type="button">Save bootloader</button></div>
+            <p><em>Note:</em> The SD card must be formatted as FAT32. Other filesystems such as exFAT are unsupported.</p>
+          </li>
+          <li>
+            Connect your player to your computer in USB boot mode:
+            <ul>
+              <li>Make sure your player is fully powered off.</li>
+              <li>Connect a USB cable to your player -- but don't plug it into your computer yet.</li>
+              <li>Hold the <em class="boot-button">USB boot</em> button while plugging the other end of the cable into your computer.</li>
+              <li>Release the <em class="boot-button">USB boot</em> button.</li>
+            </ul>
+          </li>
+          <li>
+            Load the bootloader to your player. After clicking the button below,
             select the player from the popup box displayed by your browser. If your
             player doesn't appear, go back to the previous step and reconnect your
-            player to the computer.</div>
-          <button autocomplete="off" id="button-load" class="disable-if-no-player enable-if-boot-pkg" type="button">Load bootloader</button>
-        </li>
-        <li>
-          The Rockbox recovery menu should now be displayed on your player's screen.
-          If not, check the log below for error messages.
-        </li>
-        <li>
-          Before flashing the bootloader, you should select <em>Backup</em> from
-          the <code>[Bootloader]</code> menu to save a backup of your original
-          bootloader to the SD card. You can use the backup to restore the original
-          bootloader using the <em>Restore</em> option.
-        </li>
-        <li>
-          To flash the bootloader to your player, select <em>Install or update</em>
-          from the <code>[Bootloader]</code> menu.
-        </li>
-        <li>
-          After flashing the bootloader successfully, you can complete the installation
-          by downloading a
-          <a href="">Rockbox development build</a>
-          and extracting the zip file to the root of your player's SD card. You can use
-          the <em>USB Mode</em> option in the recovery menu to access the SD card using
-          your player.
-        </li>
-      </ol>
-      <div><label for="console">Log</label></div>
-      <textarea autocomplete="off" readonly cols="60" rows="12" style="max-width:100%;resize:none;" id="console"></textarea>
-      <div><button autocomplete="off" id="clear-log" type="button">Clear log</button></div>
-    </div>
-    <h2>License Notice</h2>
-    <pre>Decompression code adapted from UCL
+            player to the computer.
+            <div><button autocomplete="off" id="button-load" class="disable-if-no-player enable-if-boot-pkg" type="button">Load bootloader</button></div>
+          </li>
+          <li>
+            The Rockbox recovery menu should now be displayed on your player's screen.
+            If not, check the log below for error messages.
+          </li>
+          <li>
+            Before flashing the bootloader, you should select <em>Backup</em> from
+            the <code>[Bootloader]</code> menu to save a backup of your original
+            bootloader to the SD card. You can use the backup to restore the original
+            bootloader using the <em>Restore</em> option.
+          </li>
+          <li>
+            To flash the bootloader to your player, select <em>Install or update</em>
+            from the <code>[Bootloader]</code> menu.
+          </li>
+          <li>
+            After flashing the bootloader successfully, you can complete the installation
+            by downloading a
+            <a href="">Rockbox development build</a>
+            and extracting the zip file to the root of your player's SD card. You can use
+            the <em>USB Mode</em> option in the recovery menu to access the SD card using
+            your player.
+          </li>
+        </ol>
+        <div><label for="console">Log</label></div>
+        <textarea autocomplete="off" readonly cols="60" rows="12" style="max-width:100%;resize:none;" id="console"></textarea>
+        <div><button autocomplete="off" id="clear-log" type="button">Clear log</button></div>
+      </div>
+    </main>
+    <footer>
+      <h2>License Notice</h2>
+      <pre>Decompression code adapted from UCL
 Copyright (C) 1996-2002 Markus Franz Xaver Johannes Oberhumer
 
 jztool
@@ -98,14 +103,14 @@ Copyright (C) 2021 Aidan MacDonald
 
 jztool.js
 Copyright (C) 2021 astrolabe
-Copyright (C) 2022 Aidan MacDonald
-
-The JavaScript code in this page is free software: you can
-redistribute it and/or modify it under the terms of the GNU
-General Public License (GNU GPL) as published by the Free Software
-Foundation, either version 2 of the License, or (at your option)
-any later version.  The code is distributed WITHOUT ANY WARRANTY;
-without even the implied warranty of MERCHANTABILITY or FITNESS
-FOR A PARTICULAR PURPOSE.  See the GNU GPL for more details.</pre>
+Copyright (C) 2022 Aidan MacDonald</pre>
+      <p>The JavaScript code in this page is free software: you can
+        redistribute it and/or modify it under the terms of the GNU
+        General Public License (GNU GPL) as published by the Free Software
+        Foundation, either version 2 of the License, or (at your option)
+        any later version.  The code is distributed WITHOUT ANY WARRANTY;
+        without even the implied warranty of MERCHANTABILITY or FITNESS
+        FOR A PARTICULAR PURPOSE.  See the GNU GPL for more details.</p>
+    </footer>
   </body>
 </html>
