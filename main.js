@@ -620,7 +620,7 @@ window.addEventListener('DOMContentLoaded', function(){
         if(file === undefined || pkg === undefined)
             throw new Error('Package is missing or invalid');
 
-        debug_log("Performing bootloader download...");
+        debug_log("Saving bootloader...");
         buf_download(file, file_name);
     });
 
