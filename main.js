@@ -458,7 +458,7 @@ window.addEventListener('DOMContentLoaded', function(){
 
         let resp = await fetch(file_name);
         if(!resp.ok)
-            throw new Error("Error downloading file: " + resp.status_text + " (" + resp.status + ")");
+            throw new Error("Error downloading file: " + resp.statusText + " (" + resp.status + ")");
 
         let ret = new Uint8Array(await resp.arrayBuffer());
         debug_log("File downloaded, " + ret.byteLength + " bytes");
