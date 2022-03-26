@@ -67,7 +67,7 @@ function buf_from_str(str) {
 
 // https://stackoverflow.com/a/23451803
 function buf_download(buf, name) {
-    let blob = new Blob(buf, {type: "application/octet-stream"});
+    let blob = new Blob([buf], {type: "application/octet-stream"});
     let url = window.URL.createObjectURL(blob);
 
     let a = document.createElement("a");
