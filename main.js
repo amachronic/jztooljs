@@ -526,6 +526,8 @@ window.addEventListener('DOMContentLoaded', function(){
         };
 
         debug_log("Validated bootloader package.");
+        debug_log("Bootloader version: " + ret.version);
+
         package_cache[player_model] = ret;
         return ret;
     }
