@@ -429,16 +429,20 @@ async function x1000_run_stage2(device, image) {
  * FRONTEND
  * ========================================================================= */
 
+const BASEURL = "files";
+
 const PLAYER_INFO = {
     "m3k": {
         name: "FiiO M3K",
         file_ext: "m3k",
+        bootloader_url: BASEURL + "/bootloader/fiio/m3k/bootloader.m3k",
         boot_button: "Volume Down",
         cpu: CPU_X1000,
     },
     "q1": {
         name: "Shanling Q1",
         file_ext: "q1",
+        bootloader_url: BASEURL + "/bootloader/shanling/q1/bootloader.q1",
         boot_button: "Play",
         cpu: CPU_X1000,
     },
@@ -453,10 +457,10 @@ window.addEventListener('DOMContentLoaded', function(){
         debug_console.value += item + '\n';
     }
 
-    async function retrieve_file(file_name) {
-        debug_log("Downloading file: '" + file_name + "'");
+    async function retrieve_file(file_name, url) {
+        debug_log("Downloading: '" + url + "'");
 
-        let resp = await fetch(file_name);
+        let resp = await fetch(url);
         if(!resp.ok)
             throw new Error("Error downloading file: " + resp.statusText + " (" + resp.status + ")");
 
@@ -466,10 +470,10 @@ window.addEventListener('DOMContentLoaded', function(){
         return ret;
     }
 
-    async function retrieve_file_cached(file_name) {
+    async function retrieve_file_cached(file_name, url) {
         let file = download_cache[file_name];
         if(file === undefined) {
-            file = await retrieve_file(file_name);
+            file = await retrieve_file(file_name, url);
             download_cache[file_name] = file;
         }
 
@@ -603,7 +607,8 @@ window.addEventListener('DOMContentLoaded', function(){
     add_button('button-download', async function() {
         const info = get_player_info();
         if(info !== undefined) {
-            let pkg = await retrieve_file_cached('bootloader.' + info.file_ext);
+            let pkg = await retrieve_file_cached('bootloader.' + info.file_ext,
+                                                 info.bootloader_url);
             load_package(pkg);
             update_ui_state();
         }
