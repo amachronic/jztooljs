@@ -446,6 +446,13 @@ const PLAYER_INFO = {
         boot_button: "Play",
         cpu: CPU_X1000,
     },
+    "erosq": {
+        name: "AIGO Eros Q",
+        file_ext: "erosq",
+        bootloader_url: BASEURL + "/bootloader/aigo/native/221029-b4e7c60c6d/bootloader.erosq",
+        boot_button: "Menu",
+        cpu: CPU_X1000,
+    },
 };
 
 window.addEventListener('DOMContentLoaded', function(){
