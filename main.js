@@ -435,14 +435,14 @@ const PLAYER_INFO = {
     "m3k": {
         name: "FiiO M3K",
         file_ext: "m3k",
-        bootloader_url: BASEURL + "/bootloader/fiio/m3k/bootloader.m3k",
+        bootloader_url: BASEURL + "/bootloader/fiio/m3k/221029-b4e7c60c6d/bootloader.m3k",
         boot_button: "Volume Down",
         cpu: CPU_X1000,
     },
     "q1": {
         name: "Shanling Q1",
         file_ext: "q1",
-        bootloader_url: BASEURL + "/bootloader/shanling/q1/bootloader.q1",
+        bootloader_url: BASEURL + "/bootloader/shanling/q1/221029-b4e7c60c6d/bootloader.q1",
         boot_button: "Play",
         cpu: CPU_X1000,
     },

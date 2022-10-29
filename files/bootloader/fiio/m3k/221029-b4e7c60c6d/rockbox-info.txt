@@ -4,13 +4,13 @@ Target define: -DFIIO_M3K
 Memory: 64
 CPU: mips
 Manufacturer: ingenic_x1000
-Version: bf3e67204c-220402
+Version: b4e7c60c6d-221029
 Binary: bootloader.m3k
 Binary size: 92160
 Voice format: 
-Actual size: 128796
-RAM usage: 865328
+Actual size: 134360
+RAM usage: 870896
 gcc: mipsel-elf-gcc (GCC) 4.9.4
 ld: GNU ld (GNU Binutils) 2.26.1
-Host gcc: gcc (Gentoo Hardened 11.2.1_p20220115 p4) 11.2.1 20220115
+Host gcc: gcc (Gentoo Hardened 11.3.0 p7) 11.3.0
 Host system: Linux
